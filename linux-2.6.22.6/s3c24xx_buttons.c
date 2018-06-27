@@ -12,6 +12,16 @@
 #define DEVICE_NAME     "buttons"   /* ����ģʽ��ִ�С�cat /proc/devices����������豸���� */
 #define BUTTON_MAJOR    232         /* ���豸�� */
 
+static struct class * buttonsdrv_class;
+static struct class_device *buttonsdrv_class_dev;
+
+volatile unsigned int gpfcon = NULL;
+volatile unsigned int gpfdat = NULL;
+
+volatile unsigned int led1 = 1 << 4;
+volatile unsigned int led2 = 1 << 5;
+volatile unsigned int led3 = 1 << 6;
+
 struct button_irq_desc {
     int irq;
     unsigned long flags;
@@ -101,9 +111,24 @@ static int s3c24xx_buttons_read(struct file *filp, char __user *buff,
                                          size_t count, loff_t *offp)
 {
     unsigned long err;
-    
+    int i = 0;
+
     /* ���ev_press����0������ */
     wait_event_interruptible(button_waitq, ev_press);
+    for (i = 0; i < 3; i++)
+    {
+        switch (i)
+        {
+            case 1: if (press_cnt[1]) {led1 = ~led1; break;}
+            case 2: if (press_cnt[2]) {led2 = ~led2; break;}
+            case 3: if (press_cnt[3]) {led3 = ~led3; break;}
+            case 4: if (press_cnt[4]) {led1 = ~led1; led2 = ~led2; led3 = ~led3; break;}
+
+        }
+    }    
+
+    *gpfdat &= ~(led1 | led2 | led3);
+
 
     /* ִ�е�����ʱ��ev_press����1��������0 */
     ev_press = 0;
@@ -114,9 +139,6 @@ static int s3c24xx_buttons_read(struct file *filp, char __user *buff,
 
     return err ? -EFAULT : 0;
 }
-
-
-
 
 
 
@@ -155,6 +177,13 @@ static int __init s3c24xx_buttons_init(void)
      * BUTTON_MAJOR������Ϊ0����ʾ���ں��Զ��������豸��
      */
     ret = register_chrdev(BUTTON_MAJOR, DEVICE_NAME, &s3c24xx_buttons_fops);
+
+    buttonsdrv_class = class_create(THIS_MODULE, "buttons");
+    buttonsdrv_class_dev = class_device_create(buttonsdrv_class, NULL, MKDEV(BUTTON_MAJOR,O), NULL, "buttons");
+
+    gpfcon = (volatile unsigned long *)ioremap(0x56000050, 16);
+    gpfdat = gpfcon + 1;
+
     if (ret < 0) {
       printk(DEVICE_NAME " can't register major number\n");
       return ret;
@@ -169,8 +198,10 @@ static int __init s3c24xx_buttons_init(void)
  */
 static void __exit s3c24xx_buttons_exit(void)
 {
-    /* ж���������� */
+    /* Log out the major device number*/
     unregister_chrdev(BUTTON_MAJOR, DEVICE_NAME);
+    class_device_unregister(buttonsdrv_class_dec);
+    class_destroy(buttonsdrv_class);
 }
 
 /* ������ָ����������ĳ�ʼ��������ж�غ��� */
