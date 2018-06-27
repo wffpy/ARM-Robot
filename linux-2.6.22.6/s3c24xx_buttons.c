@@ -178,7 +178,7 @@ module_init(s3c24xx_buttons_init);
 module_exit(s3c24xx_buttons_exit);
 
 /* �������������һЩ��Ϣ�����Ǳ���� */
-MODULE_AUTHOR("http://www.100ask.net");             // �������������
+MODULE_AUTHOR("Wang Fangfei");             // �������������
 MODULE_DESCRIPTION("S3C2410/S3C2440 BUTTON Driver");   // һЩ������Ϣ
 MODULE_LICENSE("GPL");                              // ��ѭ��Э��
 
