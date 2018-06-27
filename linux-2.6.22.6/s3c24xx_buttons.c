@@ -83,6 +83,9 @@ static int s3c24xx_buttons_open(struct inode *inode, struct file *file)
             free_irq(button_irqs[i].irq, (void *)&press_cnt[i]);
         return -EBUSY;
     }
+    // initial the leds 
+    *gpfcon &= ~((0x3 << 2*4) | (0x3 << 2*5) | (0x3 << 2*6));  // clear
+    *gpfcon |= (0x1 << 2*4) | (0x1 << 2*5) | (0x1 << 2*6); // set the pin GPF 4,5,6 as the output
     
     return 0;
 }
@@ -209,7 +212,7 @@ module_init(s3c24xx_buttons_init);
 module_exit(s3c24xx_buttons_exit);
 
 /* �������������һЩ��Ϣ�����Ǳ���� */
-MODULE_AUTHOR("Wang Fangfei");             // �������������
+MODULE_AUTHOR("wff");             // �������������
 MODULE_DESCRIPTION("S3C2410/S3C2440 BUTTON Driver");   // һЩ������Ϣ
 MODULE_LICENSE("GPL");                              // ��ѭ��Э��
 
