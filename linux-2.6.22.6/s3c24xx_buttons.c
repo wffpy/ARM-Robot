@@ -22,13 +22,14 @@ volatile unsigned int led1 = 1 << 4;
 volatile unsigned int led2 = 1 << 5;
 volatile unsigned int led3 = 1 << 6;
 
+/*the information struct for a interrupt*/
 struct button_irq_desc {
     int irq;
     unsigned long flags;
     char *name;
 };
 
-/* ����ָ���������õ��ⲿ�ж����ż��жϴ�����ʽ, ���� */
+/* struct for the button irqs */
 static struct button_irq_desc button_irqs [] = {
     {IRQ_EINT19, IRQF_TRIGGER_FALLING, "KEY1"}, /* K1 */
     {IRQ_EINT11, IRQF_TRIGGER_FALLING, "KEY2"}, /* K2 */
@@ -36,34 +37,46 @@ static struct button_irq_desc button_irqs [] = {
     {IRQ_EINT0,  IRQF_TRIGGER_FALLING, "KEY4"}, /* K4 */
 };
 
-/* ���������µĴ���(׼ȷ��˵���Ƿ����жϵĴ���) */
+/* record the press event for each button */
 static volatile int press_cnt [] = {0, 0, 0, 0};
 
-/* �ȴ�����: 
- * ��û�а���������ʱ������н��̵���s3c24xx_buttons_read������
- * ��������
+/****
+ * declear a wait_queue_head
  */
 static DECLARE_WAIT_QUEUE_HEAD(button_waitq);
 
-/* �ж��¼���־, �жϷ����������1��s3c24xx_buttons_read������0 */
+/* record if the buttons have been pressed*/
 static volatile int ev_press = 0;
 
-
+/****************************************************************************************
+ * Name : buttons_interrupt
+ * Parameters :
+ *              int irp : the interrupt vector
+ *              void *dev_id : the id of the device generate the interrupt
+ * 
+ * *************************************************************************************/
 static irqreturn_t buttons_interrupt(int irq, void *dev_id)
 {
     volatile int *press_cnt = (volatile int *)dev_id;
     
-    *press_cnt = *press_cnt + 1; /* ����������1 */
-    ev_press = 1;                /* ��ʾ�жϷ����� */
-    wake_up_interruptible(&button_waitq);   /* �������ߵĽ��� */
+    *press_cnt = *press_cnt + 1; 
+    ev_press = 1;                
+    wake_up_interruptible(&button_waitq);   
     
     return IRQ_RETVAL(IRQ_HANDLED);
 }
 
 
-/* Ӧ�ó�����豸�ļ�/dev/buttonsִ��open(...)ʱ��
- * �ͻ����s3c24xx_buttons_open����
- */
+/******************************************************************************
+ * Name : s3c24xx_buttons_open()
+ * Function : register the interrupt processing function, if the registration is not successs, log out all the interrupt devices
+ * Parameters : 
+ *              struct inode* inode
+ *              file * file 
+ * Return : if succeed : return 0
+ *          if false : return -EBUSY
+ * 
+ ******************************************************************************/
 static int s3c24xx_buttons_open(struct inode *inode, struct file *file)
 {
     int i;
@@ -71,7 +84,7 @@ static int s3c24xx_buttons_open(struct inode *inode, struct file *file)
     
     for (i = 0; i < sizeof(button_irqs)/sizeof(button_irqs[0]); i++) {
         // ע���жϴ�����
-        err = request_irq(button_irqs[i].irq, , button_irqs[i].flags, button_irqs[i].name, (void *)&press_cnt[i]);
+        err = request_irq(button_irqs[i].irq, buttons_interrupt , button_irqs[i].flags, button_irqs[i].name, (void *)&press_cnt[i]);
         if (err)
             break;
     }
@@ -91,8 +104,13 @@ static int s3c24xx_buttons_open(struct inode *inode, struct file *file)
 }
 
 
-/* Ӧ�ó�����豸�ļ�/dev/buttonsִ��close(...)ʱ��
- * �ͻ����s3c24xx_buttons_close����
+/******************************************************************************
+ * Name : s3c24xx_buttons_close
+ * Function : Log out all the registered interrupt devices
+ * Parameters : 
+ *              struct inode *inode
+ *              struct file *file
+ * Return : 0
  */
 static int s3c24xx_buttons_close(struct inode *inode, struct file *file)
 {
@@ -107,8 +125,18 @@ static int s3c24xx_buttons_close(struct inode *inode, struct file *file)
 }
 
 
-/* Ӧ�ó�����豸�ļ�/dev/buttonsִ��read(...)ʱ��
- * �ͻ����s3c24xx_buttons_read����
+/******************************************************************************
+ * Name : s3c24xx_buttons_read()
+ * Function : read data from the kernal
+ * Parameters : 
+ *              struct file *file
+ *              char _user *buff
+ *              size_t count
+ *              loff_t *offp
+ * Return : 
+ *          if succeed : return 0
+ *          if error  : return -EFAULT
+ *  
  */
 static int s3c24xx_buttons_read(struct file *filp, char __user *buff, 
                                          size_t count, loff_t *offp)
@@ -116,7 +144,7 @@ static int s3c24xx_buttons_read(struct file *filp, char __user *buff,
     unsigned long err;
     int i = 0;
 
-    /* ���ev_press����0������ */
+    /*  */
     wait_event_interruptible(button_waitq, ev_press);
     for (i = 0; i < 3; i++)
     {
@@ -133,7 +161,7 @@ static int s3c24xx_buttons_read(struct file *filp, char __user *buff,
     *gpfdat &= ~(led1 | led2 | led3);
 
 
-    /* ִ�е�����ʱ��ev_press����1��������0 */
+    /* ִclear the record after the processing function */
     ev_press = 0;
 
     /* ������״̬���Ƹ��û�������0 */
@@ -145,13 +173,11 @@ static int s3c24xx_buttons_read(struct file *filp, char __user *buff,
 
 
 
-
-
-
-/* ����ṹ���ַ��豸��������ĺ���
- * ��Ӧ�ó�������豸�ļ�ʱ�����õ�open��read��write�Ⱥ�����
- * ���ջ��������ṹ�еĶ�Ӧ����
- */
+/******************************************************************************
+ * Name : s3c24xx_buttons_fops
+ * Function : the set of drive function
+ * 
+ ******************************************************************************/
 static struct file_operations s3c24xx_buttons_fops = {
     .owner   =   THIS_MODULE,    /* ����һ���ָ꣬�����ģ��ʱ�Զ�������__this_module���� */
     .open    =   s3c24xx_buttons_open,
@@ -160,14 +186,7 @@ static struct file_operations s3c24xx_buttons_fops = {
 };
 
 
-
-
-
-
-
-
 /*
- * ִ�С�insmod s3c24xx_buttons.ko������ʱ�ͻ�����������
  */
 static int __init s3c24xx_buttons_init(void)
 {
