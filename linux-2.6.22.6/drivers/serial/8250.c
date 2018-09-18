@@ -1465,7 +1465,7 @@ static irqreturn_t serial8250_interrupt(int irq, void *dev_id)
 		up = list_entry(l, struct uart_8250_port, list);
 
 		iir = serial_in(up, UART_IIR);
-		if (!(iir & UART_IIR_NO_INT)) {
+		if (!(iir & UART_IIR_NO_INT)) {//
 			serial8250_handle_port(up);
 
 			handled = 1;

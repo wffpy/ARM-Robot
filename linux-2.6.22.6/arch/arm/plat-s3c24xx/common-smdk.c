@@ -45,6 +45,11 @@
 #include <asm/plat-s3c24xx/pm.h>
 
 /* LED devices */
+#ifdef CONFIG_SERIAL_EXTEND-S3C24xx
+#include <linux/serial_8250.h>
+#endif
+
+
 
 static struct s3c24xx_led_platdata smdk_pdata_led4 = {
 	.gpio		= S3C2410_GPF4,
@@ -149,6 +154,39 @@ static struct mtd_partition smdk_default_nand_part[] = {
 	}
 };
 
+/*for extend serial chip*/
+#ifdef CONFIG_SERIAL_EXTETEND_S3C24xx
+stastic struct plat_serial8250_port s3c_device_8250_data[] ={
+	[0] = {
+		.mapbase = 0x28000000,
+		.irq = IRQ_EINT18,
+		.flags = (UPF_BOOT_AUTOCONF | UPF_IOREMAP | UPF_SHARE_IRQ),
+		.iotype = UPIO_MEM,
+		.regshift = 0,
+		.uartclk = 115200*16,
+	},
+	[1] = {
+		.mapbase = 0x29000000,
+		.irq = IRQ_EINT17,
+		.flags = (UPF_BOOT_AUTOCONF | UPF_IOREMAP | UPF_SHARE_IRQ),
+		.iotype = UPIO_MEM,
+		.regshift = 0,
+		.uartclk = 115200*16,
+	},
+	{ }
+
+};
+
+static struct platform_device s3c_device_8250 = {
+	.name = "serial8250",
+	.id = 0,
+	.dev = {
+		.platform_data = &s3c_device_8250_data,
+	},
+};
+
+#endif
+
 static struct s3c2410_nand_set smdk_nand_sets[] = {
 	[0] = {
 		.name		= "NAND",
@@ -179,6 +217,9 @@ static struct platform_device __initdata *smdk_devs[] = {
 	&smdk_led6,
 	&smdk_led7,
 };
+#ifdef CONFIG_SERIAL_EXTETEND_S3C24xx
+	&s3c_device_8250,
+#endif
 
 void __init smdk_machine_init(void)
 {

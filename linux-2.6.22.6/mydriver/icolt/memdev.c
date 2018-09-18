@@ -42,35 +42,43 @@ int mem_open(struct inode *inode, struct file *filp)
 {
     struct mem_dev *dev;
     
-    /*»ñÈ¡´ÎÉè±¸ºÅ*/
+    /*get the minor device number*/
     int num = MINOR(inode->i_rdev);
 
     if (num >= MEMDEV_NR_DEVS) 
             return -ENODEV;
     dev = &mem_devp[num];
     
-    /*½«Éè±¸ÃèÊö½á¹¹Ö¸Õë¸³Öµ¸øÎÄ¼þË½ÓÐÊý¾ÝÖ¸Õë*/
+    /*no use*/
     filp->private_data = dev;
     
     return 0; 
 }
 
-/*ÎÄ¼þÊÍ·Åº¯Êý*/
+/******************************************************************************
+ * Name : mem_release()
+ * Fuction : None
+ * Parameters :   struct inode *inode 
+ *                struct file *file
+ * Return : 0
+ * 
+ *****************************************************************************/
 int mem_release(struct inode *inode, struct file *filp)
 {
   return 0;
 }
 
+
 /******************************************************************************
  * Name : memdev_ioctl()
- * Function :
+ * Function :    
  * Parameters : 
  *              struct inode *inode
  *              struct file *file
  *              unsigned int cmd
  *              unsigned long arg
- * Return : 
-*/
+ * Return : if 
+ *****************************************************************************/
 int memdev_ioctl(struct inode *inode, struct file *filp,
                  unsigned int cmd, unsigned long arg)
 {
@@ -127,7 +135,7 @@ static const struct file_operations mem_fops =
   .open = mem_open,
   .release = mem_release,
   .ioctl = memdev_ioctl,
-};
+};    
 
 /*****************************************************************************
  * Name : memdev_init()
@@ -143,10 +151,10 @@ static int memdev_init(void)
 
   dev_t devno = MKDEV(mem_major, 0);
 
-  /* ¾²Ì¬ÉêÇëÉè±¸ºÅ*/
+  /* register the major device number*/
   if (mem_major)
     result = register_chrdev_region(devno, 2, "memdev");
-  else  /* ¶¯Ì¬·ÖÅäÉè±¸ºÅ */
+  else  
   {
     result = alloc_chrdev_region(&devno, 0, 2, "memdev");
     mem_major = MAJOR(devno);
@@ -160,19 +168,17 @@ static int memdev_init(void)
   cdev.owner = THIS_MODULE;
   cdev.ops = &mem_fops;
   
-  /* ×¢²á×Ö·ûÉè±¸ */
+  /*add the character device*/
   cdev_add(&cdev, MKDEV(mem_major, 0), MEMDEV_NR_DEVS);
    
-  /* ÎªÉè±¸ÃèÊö½á¹¹·ÖÅäÄÚ´æ*/
   mem_devp = kmalloc(MEMDEV_NR_DEVS * sizeof(struct mem_dev), GFP_KERNEL);
-  if (!mem_devp)    /*ÉêÇëÊ§°Ü*/
+  if (!mem_devp)   
   {
     result =  - ENOMEM;
     goto fail_malloc;
   }
   memset(mem_devp, 0, sizeof(struct mem_dev));
   
-  /*ÎªÉè±¸·ÖÅäÄÚ´æ*/
   for (i=0; i < MEMDEV_NR_DEVS; i++) 
   {
         mem_devp[i].size = MEMDEV_SIZE;
@@ -188,16 +194,16 @@ static int memdev_init(void)
   return result;
 }
 
-/*Ä£¿éÐ¶ÔØº¯Êý*/
+
 static void memdev_exit(void)
 {
-  cdev_del(&cdev);   /*×¢ÏúÉè±¸*/
-  kfree(mem_devp);     /*ÊÍ·ÅÉè±¸½á¹¹ÌåÄÚ´æ*/
-  unregister_chrdev_region(MKDEV(mem_major, 0), 2); /*ÊÍ·ÅÉè±¸ºÅ*/
+  cdev_del(&cdev);   /*log out the decive*/
+  kfree(mem_devp);     /*release the ram in kernel*/
+  unregister_chrdev_region(MKDEV(mem_major, 0), 2); /* log out the major device number*/
 }
 
-MODULE_AUTHOR("David Xie");
-MODULE_LICENSE("GPL");
+MODULE_AUTHOR("wff");
+MODULE_LICENSE("WFF");
 
 module_init(memdev_init);
 module_exit(memdev_exit);

@@ -150,10 +150,10 @@ static int s3c24xx_buttons_read(struct file *filp, char __user *buff,
     {
         switch (i)
         {
-            case 1: if (press_cnt[1]) {led1 = ~led1; break;}
-            case 2: if (press_cnt[2]) {led2 = ~led2; break;}
-            case 3: if (press_cnt[3]) {led3 = ~led3; break;}
-            case 4: if (press_cnt[4]) {led1 = ~led1; led2 = ~led2; led3 = ~led3; break;}
+            case 1: if (press_cnt[1]) {led1 &= ~led1; break;}
+            case 2: if (press_cnt[2]) {led2 &= ~led2; break;}
+            case 3: if (press_cnt[3]) {led3 &= ~led3; break;}
+            case 4: if (press_cnt[4]) {led1 &= ~led1; led2 &= ~led2; led3 &= ~led3; break;}
 
         }
     }    
@@ -164,7 +164,7 @@ static int s3c24xx_buttons_read(struct file *filp, char __user *buff,
     /* ִclear the record after the processing function */
     ev_press = 0;
 
-    /* ������״̬���Ƹ��û�������0 */
+    /* copy data from kernel to user space*/
     err = copy_to_user(buff, (const void *)press_cnt, min(sizeof(press_cnt), count));
     memset((void *)press_cnt, 0, sizeof(press_cnt));
 
@@ -179,7 +179,7 @@ static int s3c24xx_buttons_read(struct file *filp, char __user *buff,
  * 
  ******************************************************************************/
 static struct file_operations s3c24xx_buttons_fops = {
-    .owner   =   THIS_MODULE,    /* ����һ���ָ꣬�����ģ��ʱ�Զ�������__this_module���� */
+    .owner   =   THIS_MODULE,  
     .open    =   s3c24xx_buttons_open,
     .release =   s3c24xx_buttons_close, 
     .read    =   s3c24xx_buttons_read,
